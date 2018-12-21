@@ -1,0 +1,11 @@
+{
+  "name": "nodeworkerpool",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --experimental-worker test.js"
+  },
+  "author": "hjiayz",
+  "license": "AGPL-3.0"
+}
