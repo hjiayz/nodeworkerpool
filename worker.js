@@ -31,7 +31,15 @@ worker.parentPort.on('message', message => {
   }
   if (message[0] === 3) {
     try {
-      let result = message[3].map(func_list[message[2]]);
+      let result;
+      if (message[3][0].buffer instanceof SharedArrayBuffer) {
+        for (let i in message[3][0]) {
+          message[3][1][i] = func_list[message[2]](message[3][0][i]);
+        }
+        result = message[3][1];
+      } else {
+        result = message[3][0].map(func_list[message[2]]);
+      }
       worker.parentPort.postMessage(
         [2, message[1], result],
         result_trans(result),

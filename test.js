@@ -1,11 +1,10 @@
 let add = (a, b) => a + b;
 let inc = a => a + 1;
-let la = 10000000;
-let params = new Array(la);
+let la = 100;
+let params = new Uint32Array(new SharedArrayBuffer(la * 4));
 for (let i = 0; i < la; i++) {
   params[i] = i;
 }
-let params2 = params.slice();
 console.time('one');
 let oneresult = params.map(inc).reduce(add);
 console.timeEnd('one');
@@ -18,7 +17,7 @@ async function test() {
     inc: inc,
   });
   console.time('many');
-  let list = await pool.map('inc', params2);
+  let list = await pool.map('inc', params);
   return await pool.reduce('add', list);
 }
 test()

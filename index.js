@@ -26,6 +26,9 @@ class Pool {
       this.workers.push(new_worker);
     }
   }
+  default_block_size(len) {
+    return Math.ceil(len / this.workers.length) * 2;
+  }
   async define(name, func) {
     if (typeof name === 'object') {
       return await this.define_list(name);
@@ -69,7 +72,7 @@ class Pool {
       let current_worker = this.workers[worker_id];
       current_worker.postMessage(
         [kind || 2, id, func_name, func_params],
-        func_params
+        [func_params]
           .flat()
           .map(item => {
             if (item instanceof ArrayBuffer) return item;
@@ -91,17 +94,44 @@ class Pool {
   }
   async map(func_name, value_list, block_size) {
     let promises = [];
-    let worker_number = this.workers.length;
-    block_size = block_size || Math.ceil(value_list.length / worker_number);
+    block_size = block_size || this.default_block_size(value_list.length);
+    if (value_list.buffer instanceof SharedArrayBuffer) {
+      return this.map_typed_array(func_name, value_list, block_size);
+    }
     while (value_list.length !== 0) {
-      promises.push(this.exec(func_name, value_list.splice(0, block_size), 3));
+      promises.push(
+        this.exec(func_name, [value_list.splice(0, block_size)], 3),
+      );
     }
     return (await Promise.all(promises)).flat(1);
   }
+  async map_typed_array(func_name, value_list, block_size, result_list) {
+    let promises = [];
+    if (!result_list) {
+      result_list = new value_list.constructor(
+        new SharedArrayBuffer(value_list.buffer.byteLength),
+      );
+    }
+    for (let i = 0; i < value_list.length; ) {
+      let j = i + block_size;
+      promises.push(
+        this.exec(
+          func_name,
+          [value_list.subarray(i, j), result_list.subarray(i, j)],
+          3,
+        ),
+      );
+      i = j;
+    }
+    await Promise.all(promises);
+    return result_list;
+  }
   async reduce(func_name, value_list, block_size) {
+    block_size = block_size || this.default_block_size(value_list.length);
+    if (value_list.buffer instanceof SharedArrayBuffer) {
+      return this.reduce_typed_array(func_name, value_list, block_size);
+    }
     return await new Promise((resolve, reject) => {
-      let worker_number = this.workers.length;
-      block_size = block_size || Math.ceil(value_list.length / worker_number);
       let count = 0;
       let cache = value_list;
       let spwan = () => {
@@ -125,6 +155,16 @@ class Pool {
       };
       spwan();
     });
+  }
+  async reduce_typed_array(func_name, value_list, block_size) {
+    let promises = [];
+    for (let i = 0; i < value_list.length; ) {
+      let j = i + block_size;
+      promises.push(this.exec(func_name, value_list.subarray(i, j), 4));
+      i = j;
+    }
+    let result = await Promise.all(promises);
+    return await this.exec(func_name, result, 4);
   }
   free() {
     for (let item of this.workers) {
