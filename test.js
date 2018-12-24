@@ -1,6 +1,6 @@
 let add = (a, b) => a + b;
 let inc = a => a + 1;
-let la = 100;
+let la = 10000000;
 let params = new Uint32Array(new SharedArrayBuffer(la * 4));
 for (let i = 0; i < la; i++) {
   params[i] = i;

@@ -2,7 +2,7 @@ const worker = require('worker_threads');
 const numCPUs = require('os').cpus().length;
 class Pool {
   constructor(worker_number) {
-    worker_number = worker_number || numCPUs;
+    worker_number = worker_number || numCPUs * 2;
     this.workers = [];
     this.reg_events = {};
     this.task_events = {};
@@ -27,7 +27,7 @@ class Pool {
     }
   }
   default_block_size(len) {
-    return Math.ceil(len / this.workers.length) * 2;
+    return Math.ceil(len / this.workers.length);
   }
   async define(name, func) {
     if (typeof name === 'object') {
